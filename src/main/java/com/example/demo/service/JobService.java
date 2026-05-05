@@ -15,9 +15,9 @@ public class JobService {
 
     private final JobPostingRepository jobPostingRepository;
 
-    @Transactional // DB 반영을 보장하기 위해 추가합니다.
+    @Transactional // DB 반영을 보장
     public JobCreateResponse createJob(JobCreateRequest request) {
-        // 주석을 풀고 실제 엔티티를 생성하여 저장.
+        // 실제 엔티티를 생성하여 저장.
 
         JobPosting jobPosting = new JobPosting();
         jobPosting.setTitle(request.title());

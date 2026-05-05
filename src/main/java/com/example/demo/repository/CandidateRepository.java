@@ -13,12 +13,11 @@ import java.util.Optional;
 @Repository
 public interface CandidateRepository extends JpaRepository<Candidate, Long> {
 
-    // 1. 특정 채용 공고(jobId)에 지원한 지원자 목록 조회 (페이징 포함)
-    // 명세서 3번 API의 핵심 로직.
+    // 1. 특정 채용 공고에 지원한 지원자 목록 조회
     Page<Candidate> findByJobPostingId(Long jobPostingId, Pageable pageable);
 
     // 2. 해시태그 필터링을 포함한 지원자 조회
-    // 명세서에서 언급된 '해시태그 기반 필터링'을 처리하기 위한 쿼리.
+    // 해시태그 기반 필터링을 처리하기 위한 쿼리.
     @Query(value = "SELECT c.* FROM candidates c " +
             "JOIN resumes r ON c.id = r.candidate_id " +
             "JOIN analysis_results a ON r.id = a.resume_id " +

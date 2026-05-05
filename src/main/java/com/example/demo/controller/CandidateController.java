@@ -22,11 +22,11 @@ public class CandidateController {
 
 	@GetMapping
         public ResponseEntity<CandidateListResponse> getCandidateList( // api 명세서에 표기된 대로 리스트화
-            @RequestParam(name = "job_id") Long jobId, // 공고 ID. 꼭 필요하며 공고를 구분하는데 사용. 속도 향상 및 편의성을 이유로 Long타입으로 변경
-            @RequestParam(name = "hashtag", required = false) String hashtag, // 해시 태그 꼭 필요하지는 않지만 
+            @RequestParam(name = "job_id") Long jobId, // 공고 ID. 꼭 필요하고 공고를 구분하는데 사용. 속도 향상 및 편의성을 이유로 Long타입으로 변경
+            @RequestParam(name = "hashtag", required = false) String hashtag, // 해시 태그 꼭 필요하지는 않음
             @RequestParam(name = "page") int page, // 필수
             @RequestParam(name = "page_size", required = false, defaultValue = "10") int pageSize, // 한 페이지당 공고를 몇 개 나타낼건지? 기본값은 10개
-            @RequestParam(name = "sort", required = false, defaultValue = "match_score_desc") String sort) { // 정렬 기준. 
+            @RequestParam(name = "sort", required = false, defaultValue = "match_score_desc") String sort) { // 정렬 기준. 기본값은 매칭도 오름차순
         CandidateListResponse response = candidateService.getCandidates(jobId, page, pageSize);
         return ResponseEntity.ok(response);
     }
