@@ -4,10 +4,14 @@ import com.example.demo.dto.ResumeAnalyzeRequest;
 import com.example.demo.dto.ResumeAnalyzeResponse;
 import com.example.demo.dto.ResumeSubmitRequest;
 import com.example.demo.service.ResumeService;
+import com.example.demo.dto.AiAnalyzeResultDto;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -17,10 +21,12 @@ public class ResumeController {
 
     private final ResumeService resumeService;
 
-    // [POST] 이력서 분석 요청 API
+// [POST] 이력서 분석 요청 API
     @PostMapping("/analyze")
-    public ResponseEntity<ResumeAnalyzeResponse> analyzeResume(@RequestBody ResumeAnalyzeRequest request) {
-        ResumeAnalyzeResponse response = resumeService.analyzeResume(request);
+    public ResponseEntity<AiAnalyzeResultDto> analyzeResume(@RequestBody ResumeAnalyzeRequest request) {
+        
+        AiAnalyzeResultDto response = resumeService.analyzeResume(request); 
+        
         return ResponseEntity.ok(response);
     }
 

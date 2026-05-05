@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
 
 ### STS ###
 .apt_generated
@@ -15,8 +12,6 @@ build/
 .springBeans
 .sts4-cache
 bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
 
 ### IntelliJ IDEA ###
 .idea
@@ -24,32 +19,15 @@ bin/
 *.iml
 *.ipr
 out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
 
 ### VS Code ###
 .vscode/
-=======
-# Compiled class file
-*.class
 
-# Log file
+### Compiled class file ###
+*.class
 *.log
 
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
+### Package Files ###
 *.jar
 *.war
 *.nar
@@ -57,8 +35,3 @@ out/
 *.zip
 *.tar.gz
 *.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
->>>>>>> b71abcfe874ab1d0879e907e16cddcb0ec79711e

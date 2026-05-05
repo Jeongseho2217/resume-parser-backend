@@ -13,3 +13,7 @@ spring:
     properties:
       hibernate:
         format_sql: true	
+openai:
+  api-key: "sk-~ 꼴 형태의 api 키 넣는 곳임"
+  model: "gpt-4o-mini"
+  api-url: "https://api.openai.com/v1/chat/completions"
