@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 import com.example.demo.entity.Resume;
 
 @Repository
-public interface ResumeRepository extends JpaRepository<Resume, String> {
+public interface ResumeRepository extends JpaRepository<Resume, Long> {
 }

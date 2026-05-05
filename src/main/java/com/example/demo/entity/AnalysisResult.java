@@ -5,7 +5,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 import java.util.List;
 
@@ -17,21 +20,22 @@ import java.util.List;
 public class AnalysisResult {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resume_id")
+    @JoinColumn(name = "resume_id") // DB의 resume_id 컬럼과 연결
     private Resume resume;
 
     @Type(JsonType.class)
     @Column(columnDefinition = "jsonb")
     private List<String> summary;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "technical_skills", columnDefinition = "jsonb")
     private List<String> technicalSkills;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "core_competencies", columnDefinition = "jsonb")
     private List<String> coreCompetencies;
 

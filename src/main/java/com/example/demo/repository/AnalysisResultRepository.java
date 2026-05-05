@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 import com.example.demo.entity.AnalysisResult;
 
 @Repository
-public interface AnalysisResultRepository extends JpaRepository<AnalysisResult, String> {
+public interface AnalysisResultRepository extends JpaRepository<AnalysisResult, Long> {
 }
