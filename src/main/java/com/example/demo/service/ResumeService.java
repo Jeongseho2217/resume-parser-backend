@@ -48,6 +48,8 @@ public class ResumeService {
         resume.setResumeText(dto.getResumeText());
         resume.setStatus(ResumeStatus.PENDING);
 
+        resume.setJobPosting(jobPosting);
+
         resumeRepository.save(resume);
     }
 
