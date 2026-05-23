@@ -1,60 +1,102 @@
 package com.example.demo.service;
 
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 
-import org.springframework.data.domain.Page; //Spring Data에서 페이징 결과를 담는 Page<T> 타입을 사용하기 위함
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.example.demo.dto.CandidateListResponse; // com/example/demo/dto/CandidateListResponse 참조
-import com.example.demo.dto.CandidateSummary; // com/example/demo/dto/CandidateSummary 참조
-import com.example.demo.dto.PageInfo; // com/example/demo/dto/PageInfo 참조
+import com.example.demo.dto.CandidateListResponse;
+import com.example.demo.dto.CandidateSummary;
+import com.example.demo.dto.PageInfo;
+import com.example.demo.dto.CandidateDetailResponse;
+import com.example.demo.repository.CandidateRepository;
+import com.example.demo.repository.ResumeRepository;
 
-import com.example.demo.repository.CandidateRepository; // com/example/demo/repository/CandidateRepository 참조
+import com.example.demo.entity.Candidate;
+import com.example.demo.entity.Resume;
+import com.example.demo.entity.ResumeStatus;
 
-import com.example.demo.entity.Candidate; // com/example/demo/entity/Candidate 참조
-
-import lombok.RequiredArgsConstructor; // @RequiredArgsConstructor에 필요
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class CandidateService {
 
     private final CandidateRepository candidateRepository;
+    private final ResumeRepository resumeRepository;
 
+    // ================================
+    // [API 3] 대시보드 지원자 목록 조회
+    // ================================
+    @Transactional(readOnly = true)
     public CandidateListResponse getCandidates(Long jobId, int page, int pageSize) {
-        // [1] 페이징 설정 (0부터 시작하므로 page - 1 처리)
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("id").descending());
-
-        // [2] DB 조회 (Page 객체로 반환)
         Page<Candidate> candidatePage = candidateRepository.findByJobPostingId(jobId, pageable);
 
-        // [3] Entity 리스트 -> CandidateSummary DTO 리스트로 변환
         List<CandidateSummary> candidateSummaries = candidatePage.getContent().stream()
-            .map(candidate -> new CandidateSummary(
-                candidate.getResume().getId(),      // resume_id
-                candidate.getName(),    // candidate_name[cite: 1]
-                candidate.getResume().getStatus().toString(), // status (PENDING/DONE/FAILED)[cite: 1]
-                candidate.getRecruitmentStatus(),   // recruitment_status[cite: 1]
-                //candidate.getResume().getMatchingScore() // matching_score[cite: 1] // AI 매칭도,, 일단 임시 주석 처리
-                0, // 0으로 임시값
-                // 기술 태그와 역량은 분석 결과에서 가져오기
-                List.of("#Spring_Boot", "#MySQL"),   // technical_skills[cite: 1]
-                List.of("#문제해결능력")      // core_competencies[cite: 1]
-            ))
+            .map(candidate -> {
+                Resume resume = candidate.getResume(); // 이력서 정보 가져오기
+                
+                return new CandidateSummary(
+                    resume.getId(),
+                    candidate.getName(),
+                    resume.getStatus().name(),
+                    candidate.getRecruitmentStatus(),
+                    
+                    resume.getMatchingScore() != null ? resume.getMatchingScore() : 0,
+                    resume.getTechSkillsList() != null ? resume.getTechSkillsList() : List.of(),
+                    resume.getCoreCompetenciesList() != null ? resume.getCoreCompetenciesList() : List.of()
+                );
+            })
             .toList();
 
-        // [4] Page 객체의 정보를 PageInfo DTO로 변환
         PageInfo pageInfo = new PageInfo(
-            candidatePage.getNumber() + 1,        // current_page (다시 1부터 시작하게 보정)[cite: 1]
-            candidatePage.getSize(),              // page_size[cite: 1]
-            candidatePage.getTotalPages(),        // total_pages[cite: 1]
-            (int) candidatePage.getTotalElements() // total_count[cite: 1]
+            candidatePage.getNumber() + 1,
+            candidatePage.getSize(),
+            candidatePage.getTotalPages(),
+            (int) candidatePage.getTotalElements()
         );
 
-        // [5] 최종 응답 객체 생성 및 반환
         return new CandidateListResponse(pageInfo, candidateSummaries);
+    }
+
+    // ==================================
+    // [API 4] 특정 지원자 이력서 상세 조회
+    // ==================================
+    @Transactional(readOnly = true)
+    public CandidateDetailResponse getCandidateDetail(Long resumeId) {
+        
+        // 1. DB에서 이력서 조회
+        Resume resume = resumeRepository.findById(resumeId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이력서입니다.")); // 예외처리
+
+        // 2. 상태가 PENDING 또는 FAILED일 때 로딩 스피너 돌리기
+        if (resume.getStatus() == ResumeStatus.PENDING || resume.getStatus() == ResumeStatus.FAILED) {
+            return new CandidateDetailResponse(
+                resume.getStatus().name(), 
+                null, 
+                null  
+            );
+        }
+
+        // 3. 상태가 DONE일 때의 응답 조립
+        CandidateDetailResponse.AnalysisResult resultDto = new CandidateDetailResponse.AnalysisResult(
+            resume.getSummaryList(), 
+            resume.getTechSkillsList(), 
+            resume.getCoreCompetenciesList(), 
+            resume.getMatchingScore(), 
+            resume.getResumeText() 
+        );
+
+        // 등록일자 ISO 포맷 변환
+        String appliedAtIso = resume.getCreatedAt() != null ? 
+            resume.getCreatedAt().toString() : null;
+
+        return new CandidateDetailResponse("DONE", appliedAtIso, resultDto);
     }
 }

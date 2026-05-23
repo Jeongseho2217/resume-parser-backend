@@ -2,6 +2,8 @@ package com.example.demo.entity;
 
 import java.time.LocalDateTime;
 
+import java.util.List;
+
 import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.CascadeType;
@@ -63,4 +65,34 @@ public class Resume {
 
     @OneToOne(mappedBy = "resume", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private AnalysisResult analysisResult;
+
+    // ==========================================================
+    // AI 분석 결과를 안전하게 꺼내오기 위한 편의 메서드 (Helper Methods)
+    // 분석 전(PENDING)이라서 analysisResult가 null일 경우 에러가 나지 않도록 방어.
+    // ==========================================================
+
+    public Integer getMatchingScore() {
+        if (this.analysisResult == null) return 0;
+        return this.analysisResult.getMatchingScore(); 
+    }
+
+    public List<String> getTechSkillsList() {
+        if (this.analysisResult == null) return List.of();
+        return this.analysisResult.getTechnicalSkills();
+    }
+
+    public List<String> getCoreCompetenciesList() {
+        if (this.analysisResult == null) return List.of();
+        return this.analysisResult.getCoreCompetencies();
+    }
+
+    public List<String> getSummaryList() {
+        if (this.analysisResult == null) return List.of();
+        return this.analysisResult.getSummary();
+    }
+
+    // 날짜를 가져올 때 getCreatedAt() 대신 사용하도록 일치시킵니다.
+    public LocalDateTime getCreatedAt() {
+        return this.appliedAt;
+    }
 }

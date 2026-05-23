@@ -3,14 +3,16 @@ package com.example.demo.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.dto.CandidateListResponse; // /com/example/demo/dto/CandidateListResponse 참조
-import com.example.demo.service.CandidateService; // /com/example/demo/service/CandidateService 참조
+import com.example.demo.dto.CandidateListResponse;
+import com.example.demo.dto.CandidateDetailResponse;
+import com.example.demo.service.CandidateService;
 
-import lombok.RequiredArgsConstructor; // @RequiredArgsConstructor 위해 필요
+import lombok.RequiredArgsConstructor;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -18,16 +20,32 @@ import lombok.RequiredArgsConstructor; // @RequiredArgsConstructor 위해 필요
 @RequiredArgsConstructor
 public class CandidateController {
 
-        private final CandidateService candidateService;
+    private final CandidateService candidateService;
 
-	@GetMapping
-        public ResponseEntity<CandidateListResponse> getCandidateList( // api 명세서에 표기된 대로 리스트화
-            @RequestParam(name = "job_id") Long jobId, // 공고 ID. 꼭 필요하고 공고를 구분하는데 사용. 속도 향상 및 편의성을 이유로 Long타입으로 변경
-            @RequestParam(name = "hashtag", required = false) String hashtag, // 해시 태그 꼭 필요하지는 않음
-            @RequestParam(name = "page") int page, // 필수
-            @RequestParam(name = "page_size", required = false, defaultValue = "10") int pageSize, // 한 페이지당 공고를 몇 개 나타낼건지? 기본값은 10개
-            @RequestParam(name = "sort", required = false, defaultValue = "match_score_desc") String sort) { // 정렬 기준. 기본값은 매칭도 오름차순
+    // =====================================================================
+    // [API 3] 대시보드 지원자 목록 조회
+    // URL 예시: /api/v1/candidates?job_id=1&page=1&page_size=10
+    // =====================================================================
+    @GetMapping
+    public ResponseEntity<CandidateListResponse> getCandidateList(
+            @RequestParam(name = "job_id") Long jobId, 
+            @RequestParam(name = "hashtag", required = false) String hashtag, 
+            @RequestParam(name = "page") int page, 
+            @RequestParam(name = "page_size", required = false, defaultValue = "10") int pageSize, 
+            @RequestParam(name = "sort", required = false, defaultValue = "match_score_desc") String sort) { 
         CandidateListResponse response = candidateService.getCandidates(jobId, page, pageSize);
+        return ResponseEntity.ok(response);
+    }
+
+    // =====================================================================
+    // [API 4] 특정 지원자 이력서 상세 조회 (프론트 로딩 스피너 및 모달창 용도)
+    // URL 예시: /api/v1/candidates/15
+    // =====================================================================
+    @GetMapping("/{resume_id}")
+    public ResponseEntity<CandidateDetailResponse> getCandidateDetail(
+            @PathVariable("resume_id") Long resumeId) { // 경로에 있는 숫자를 변수로 받아옴
+        
+        CandidateDetailResponse response = candidateService.getCandidateDetail(resumeId);
         return ResponseEntity.ok(response);
     }
 }
