@@ -15,6 +15,7 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
 
     // 1. 특정 채용 공고에 지원한 지원자 목록 조회
     Page<Candidate> findByJobPostingId(Long jobPostingId, Pageable pageable);
+    Optional<Candidate> findByResumeId(Long resumeId);
 
     // 2. 해시태그 필터링을 포함한 지원자 조회
     // 해시태그 기반 필터링을 처리하기 위한 쿼리.

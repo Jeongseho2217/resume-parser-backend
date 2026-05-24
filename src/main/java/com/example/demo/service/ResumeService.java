@@ -97,6 +97,13 @@ public class ResumeService {
             
             // 2. AI에게 자소서와 채용 공고를 '같이' 던집니다.
             AiAnalyzeResultDto aiResult = openAiService.analyzeWithAI(resumeText, jobRequirement);
+
+            if (aiResult.getSchool() != null) {
+                resume.setSchool(aiResult.getSchool().length() > 100 ? aiResult.getSchool().substring(0, 100) : aiResult.getSchool());
+            }
+            if (aiResult.getExperience() != null) {
+                resume.setExperience(aiResult.getExperience().length() > 100 ? aiResult.getExperience().substring(0, 100) : aiResult.getExperience());
+            }
             
             // 3. AI 분석 결과를 실제 DB 엔티티(AnalysisResult)에 담기
             com.example.demo.entity.AnalysisResult analysisResult = new com.example.demo.entity.AnalysisResult();
@@ -119,6 +126,7 @@ public class ResumeService {
             System.out.println("[AI Analyze Done] Resume ID: " + resumeId + " (Matching Score: " + aiResult.getMatching_score() + ") Save"); // 콘솔창에 띄울 메시지
             
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println("[AI Analyze Failed] Resume ID: " + resumeId + " 처리 중 오류 발생: " + e.getMessage());
             resumeRepository.findById(resumeId).ifPresent(resume -> resume.setStatus(ResumeStatus.FAILED));
         }

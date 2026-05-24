@@ -4,13 +4,16 @@ import com.example.demo.dto.ResumeAnalyzeRequest;
 import com.example.demo.dto.ResumeAnalyzeResponse;
 import com.example.demo.dto.ResumeSubmitRequest;
 import com.example.demo.service.ResumeService;
+import com.example.demo.util.FileTextExtractor;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:5173") // vite 주소 허용
 @RestController
 @RequestMapping("/api/v1/resumes")
 @RequiredArgsConstructor
@@ -18,21 +21,27 @@ public class ResumeController {
 
     private final ResumeService resumeService;
 
-    // [POST] 비동기 방식의 이력서 분석 요청 API
-    @PostMapping("/analyze")
-    public ResponseEntity<ResumeAnalyzeResponse> analyzeResume(@RequestBody ResumeAnalyzeRequest request) {
+    private final FileTextExtractor fileTextExtractor;
+
+// 파일을 입력받아 텍스트 추출 후 서비스로 보내기
+@PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ResumeAnalyzeResponse> analyzeResume(
+            @RequestParam("job_id") Long jobId,
+            @RequestParam("name") String name,
+            @RequestParam("email") String email,
+            @RequestParam("file") MultipartFile file) throws Exception {
         
-        //AI에게 텍스트를 주기전에, 일단 DB에 'PENDING' 상태로 저장.
+        // 1. 파일에서 텍스트 추출하기
+        String resumeText = fileTextExtractor.extractText(file.getInputStream());
+        
+        // 2. DTO 만들기
+        ResumeAnalyzeRequest request = new ResumeAnalyzeRequest(jobId, name, email, resumeText);
+        
+        // 3. 기존에 만들어둔 서비스 로직 그대로 호출
         Long resumeId = resumeService.saveResumeAsPending(request);
+        resumeService.processAiAnalysisAsync(resumeId, resumeText);
         
-        //응답 속도가 느린 AI 분석 작업은 백그라운드 스레드에서 처리.
-        // 컨트롤러가 ResumeService의 @Async 메서드를 직접 호출하므로 비동기로 작동.
-        resumeService.processAiAnalysisAsync(resumeId, request.resume_text());
-        
-        //AI 결과만 기다리지 않고, 그 사이에 방금 발급된 이력서 ID와 대기 상태를 프론트엔드에 즉시 반환.
-        ResumeAnalyzeResponse response = new ResumeAnalyzeResponse(resumeId, "PENDING");
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new ResumeAnalyzeResponse(resumeId, "PENDING"));
     }
 
     // [POST] 이력서 제출 및 저장 API

@@ -43,14 +43,18 @@ public class CandidateService {
                 Resume resume = candidate.getResume(); // 이력서 정보 가져오기
                 
                 return new CandidateSummary(
+
                     resume.getId(),
                     candidate.getName(),
                     resume.getStatus().name(),
                     candidate.getRecruitmentStatus(),
-                    
+
                     resume.getMatchingScore() != null ? resume.getMatchingScore() : 0,
                     resume.getTechSkillsList() != null ? resume.getTechSkillsList() : List.of(),
-                    resume.getCoreCompetenciesList() != null ? resume.getCoreCompetenciesList() : List.of()
+                    resume.getCoreCompetenciesList() != null ? resume.getCoreCompetenciesList() : List.of(),
+
+                    resume.getSchool(),
+                    resume.getExperience()
                 );
             })
             .toList();
@@ -83,7 +87,6 @@ public class CandidateService {
                 null  
             );
         }
-
         // 3. 상태가 DONE일 때의 응답 조립
         CandidateDetailResponse.AnalysisResult resultDto = new CandidateDetailResponse.AnalysisResult(
             resume.getSummaryList(), 
@@ -98,5 +101,18 @@ public class CandidateService {
             resume.getCreatedAt().toString() : null;
 
         return new CandidateDetailResponse("DONE", appliedAtIso, resultDto);
+    }
+
+    // ==================================
+    // [API 5] 지원자 전형 상태 변경 로직
+    // ==================================
+    @Transactional
+    public void updateCandidateStatus(Long resumeId, String newStatus) {
+        // 전달받은 이력서 ID로 DB에서 지원자를 찾기.
+        Candidate candidate = candidateRepository.findByResumeId(resumeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 지원자를 찾을 수 없습니다."));
+
+        // 프론트에서 넘겨준 새로운 상태로 업데이트.
+        candidate.setRecruitmentStatus(newStatus);
     }
 }

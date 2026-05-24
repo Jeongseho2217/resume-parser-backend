@@ -47,6 +47,12 @@ public class Resume {
     @Column(name = "status", length = 20)
     private ResumeStatus status; // AI 분석 상태 (PENDING / DONE / FAILED)
 
+    @Column(name = "experience", length = 100)
+    private String experience; // 경력
+
+    @Column(name = "school", length = 100)
+    private String school; // 학력
+
     @Enumerated(EnumType.STRING)
     @Column(name = "recruitment_status", length = 20)
     private RecruitmentStatus recruitmentStatus;  // 전형 상태 (검토중 / 합격 / 불합격)
