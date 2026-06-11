@@ -87,13 +87,22 @@ public class CandidateService {
                 null  
             );
         }
+
+        // ==========================================
+        // 3분할된 이력서 데이터를 프론트 화면용으로 예쁘게 조립
+        // ==========================================
+        String fullResumeText = 
+            "[지원 동기 및 자기소개]\n" + resume.getMotivation() + "\n\n" +
+            "[기술 스택]\n" + resume.getTechStack() + "\n\n" +
+            "[프로젝트 수행 경험]\n" + resume.getProjectExperience();
+
         // 3. 상태가 DONE일 때의 응답 조립
         CandidateDetailResponse.AnalysisResult resultDto = new CandidateDetailResponse.AnalysisResult(
             resume.getSummaryList(), 
             resume.getTechSkillsList(), 
             resume.getCoreCompetenciesList(), 
             resume.getMatchingScore(), 
-            resume.getResumeText() 
+            fullResumeText // 통resumeText 대신 조립한 텍스트 전달
         );
 
         // 등록일자 ISO 포맷 변환

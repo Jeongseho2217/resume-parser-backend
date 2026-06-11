@@ -40,8 +40,24 @@ public class Resume {
     @JoinColumn(name = "candidate_id")
     private Candidate candidate;
     
-    @Column(name = "resume_text", nullable = false, columnDefinition = "TEXT")
-    private String resumeText; // 자소서 원문 텍스트 직접 저장
+    // @Column(name = "resume_text", nullable = false, columnDefinition = "TEXT")
+    // private String resumeText; // 자소서 원문 텍스트 직접 저장
+
+
+    // ==========================================
+    // 교수님 피드백 반영: 모던 IT 이력서 3분할 저장용 컬럼
+    // ==========================================
+
+    @Column(name = "motivation", columnDefinition = "TEXT")
+    private String motivation; // 지원 동기 및 자기소개 원본 저장
+
+    @Column(name = "tech_stack", columnDefinition = "TEXT")
+    private String techStack; // 기술 스택 원본 저장
+
+    @Column(name = "project_experience", columnDefinition = "TEXT")
+    private String projectExperience; // 프로젝트 수행 경험 원본 저장
+
+
 
     @Enumerated(EnumType.STRING) 
     @Column(name = "status", length = 20)

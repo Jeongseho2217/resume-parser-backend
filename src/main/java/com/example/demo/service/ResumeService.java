@@ -17,8 +17,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// ResumeService <-> ResumeController
-
 @Service
 @RequiredArgsConstructor
 public class ResumeService {
@@ -28,76 +26,65 @@ public class ResumeService {
     private final JobPostingRepository jobPostingRepository;
     private final OpenAiService openAiService;
 
+    // 동기 처리: 호출 즉시 DB에 PENDING 상태로 이력서를 저장하고 ID를 반환 (프론트 통신용)
+    // ResumeAnalyzeRequest (또는 SubmitRequest)에서 데이터를 분할해서 받아 DB에 저장함
     @Transactional
-    public void saveResumeAndCandidate(ResumeSubmitRequest dto) { // 이력서 제출 로직
-        JobPosting jobPosting = jobPostingRepository.findById(dto.getJobPostingId())
-            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공고 ID입니다: " + dto.getJobPostingId()));
+    public Long saveResumeAsPending(ResumeSubmitRequest request) { // ★ 주의: 프론트에서 3분할로 보내는 DTO 객체를 받도록 수정됨
+        JobPosting jobPosting = jobPostingRepository.findById(request.getJobPostingId())
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공고 ID입니다: " + request.getJobPostingId()));
 
-        Candidate candidate = new Candidate(); // 지원자 객체 생성 및 정의
-        candidate.setName(dto.getCandidateName());
-        candidate.setEmail(dto.getEmail());
-        candidate.setPassword(dto.getPassword());
-        candidate.setMemberType(MemberType.MEMBER);
-        candidate.setJobPosting(jobPosting);
-
-        Candidate savedCandidate = candidateRepository.save(candidate);
-
-        Resume resume = new Resume(); // 이력서 객체 생성 및 정의
-        resume.setCandidate(savedCandidate);
-        resume.setResumeText(dto.getResumeText());
-        resume.setStatus(ResumeStatus.PENDING);
-        resume.setJobPosting(jobPosting);
-
-        resumeRepository.save(resume);
-    }
-
-    //동기 처리: 호출 즉시 DB에 PENDING 상태로 이력서를 저장하고 ID를 반환.
-    @Transactional
-    public Long saveResumeAsPending(ResumeAnalyzeRequest request) {
-        JobPosting jobPosting = jobPostingRepository.findById(request.job_id())
-            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공고 ID입니다: " + request.job_id()));
-
-        // 지원자 등록 (기존에 없는 경우 새로 생성한다고 가정)
+        // 지원자 등록 
         Candidate candidate = new Candidate();
-        candidate.setName(request.name());
-        candidate.setEmail(request.email());
+        candidate.setName(request.getCandidateName());
+        candidate.setEmail(request.getEmail());
         candidate.setMemberType(MemberType.MEMBER);
         candidate.setJobPosting(jobPosting);
-
-        //DB의 NOT NULL 조건을 통과하기 위해 임시 비밀번호를 세팅.
-        candidate.setPassword("temp_password_1234!");
+        candidate.setPassword(request.getPassword()); // 비밀번호 저장
 
         Candidate savedCandidate = candidateRepository.save(candidate);
 
-        // 이력서 상태를 PENDING으로 우선 저장
+        // 이력서 3분할 저장 및 PENDING 설정
         Resume resume = new Resume();
         resume.setCandidate(savedCandidate);
-        resume.setResumeText(request.resume_text());
-        resume.setStatus(ResumeStatus.PENDING);
         resume.setJobPosting(jobPosting);
+        
+        // ★ 교수님 피드백 반영: 3분할 데이터 저장
+        resume.setMotivation(request.getMotivation());
+        resume.setTechStack(request.getTechStack());
+        resume.setProjectExperience(request.getProjectExperience());
+        
+        resume.setStatus(ResumeStatus.PENDING); // 상태를 일단 PENDING으로
         
         Resume savedResume = resumeRepository.save(resume);
         return savedResume.getId();
     }
 
-    // 비동기 처리: 별도의 스레드에서 LM Studio를 호출하고 결과를 DB에 업데이트.
-    // @Async가 작동하려면 이 메서드는 반드시 외부 컨트롤러에서 호출되어야 함.
+    // 비동기 처리: 별도의 스레드에서 LM Studio를 호출하고 결과를 DB에 업데이트
     @Async
     @Transactional
-    public void processAiAnalysisAsync(Long resumeId, String resumeText) {
+    public void processAiAnalysisAsync(Long resumeId) { // 이제 텍스트를 파라미터로 안 받고 DB에서 직접 조합해서 씀
         try {
             System.out.println("[AI 분석 시작] 이력서 ID: " + resumeId + " 백그라운드 분석을 시작합니다.");
             
-            // 1. AI를 부르기 전에, DB에서 이력서와 '채용 공고' 정보를 먼저 찾아옵니다!
+            // 1. DB에서 방금 저장된 이력서 정보 찾아오기
             Resume resume = resumeRepository.findById(resumeId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이력서 ID입니다: " + resumeId));
             
-            // 공고 테이블(JobPosting)에서 자격요건(requirement) 텍스트를 꺼내옵니다.
+            // 2. 공고의 자격 요건 가져오기
             String jobRequirement = resume.getJobPosting().getRequirement(); 
             
-            // 2. AI에게 자소서와 채용 공고를 '같이' 던집니다.
-            AiAnalyzeResultDto aiResult = openAiService.analyzeWithAI(resumeText, jobRequirement);
+            // ==========================================
+            // AI 프롬프트 최적화: 환각 방지를 위한 분석 대상 텍스트 조합
+            // 지원 동기(motivation)는 감성적 영역이므로 AI 핵심 기술 분석에서는 제외하거나 비중을 낮춤
+            // ==========================================
+            String textToAnalyze = 
+                " [보유 기술 스택] " + resume.getTechStack() + 
+                " [핵심 프로젝트 경험] " + resume.getProjectExperience();
 
+            // 3. 조합된 '핵심 텍스트'와 '채용 공고'를 AI에게 던짐
+            AiAnalyzeResultDto aiResult = openAiService.analyzeWithAI(textToAnalyze, jobRequirement);
+
+            // 4. 추출된 데이터 맵핑
             if (aiResult.getSchool() != null) {
                 resume.setSchool(aiResult.getSchool().length() > 100 ? aiResult.getSchool().substring(0, 100) : aiResult.getSchool());
             }
@@ -105,29 +92,25 @@ public class ResumeService {
                 resume.setExperience(aiResult.getExperience().length() > 100 ? aiResult.getExperience().substring(0, 100) : aiResult.getExperience());
             }
             
-            // 3. AI 분석 결과를 실제 DB 엔티티(AnalysisResult)에 담기
             com.example.demo.entity.AnalysisResult analysisResult = new com.example.demo.entity.AnalysisResult();
             analysisResult.setResume(resume); 
-            
             analysisResult.setSummary(aiResult.getSummary()); 
             analysisResult.setTechnicalSkills(aiResult.getTech_stacks()); 
             analysisResult.setCoreCompetencies(aiResult.getCore_competencies()); 
-            
-            // 4. 대망의 매칭 점수 세팅! (이제 진짜 AI가 계산한 점수가 들어갑니다)
             analysisResult.setMatchingScore(aiResult.getMatching_score()); 
             
-            // 5. 이력서 엔티티에 결과물 조립하고 상태를 DONE으로 변경
+            // 5. 이력서 엔티티에 조립 및 상태 업데이트
             resume.setAnalysisResult(analysisResult);
             resume.setStatus(ResumeStatus.DONE);
             
-            // 6. DB에 최종 저장
+            // 6. 저장 완료
             resumeRepository.save(resume);
             
-            System.out.println("[AI Analyze Done] Resume ID: " + resumeId + " (Matching Score: " + aiResult.getMatching_score() + ") Save"); // 콘솔창에 띄울 메시지
+            System.out.println("[AI 분석 완료] 이력서 ID: " + resumeId + " 매칭 점수: " + aiResult.getMatching_score() + "점");
             
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("[AI Analyze Failed] Resume ID: " + resumeId + " 처리 중 오류 발생: " + e.getMessage());
+            System.err.println("[AI 분석 실패] 이력서 ID: " + resumeId + " 처리 중 오류: " + e.getMessage());
             resumeRepository.findById(resumeId).ifPresent(resume -> resume.setStatus(ResumeStatus.FAILED));
         }
     }
